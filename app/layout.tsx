@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
-import Navbar from "@/components/Navbar";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: "Coffee SaaS - Find Your Perfect Coffee Spot",
-  description: "Discover the best coffee shops near you with AI-powered recommendations",
+  title: "Coffee SaaS",
+  description: "Find the best coffee shops",
 };
 
 export default function RootLayout({
@@ -17,18 +23,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body className={inter.className}>
-          <Navbar />
-          <main className="min-h-screen bg-gray-50">{children}</main>
-          <footer className="bg-gray-900 text-white py-8">
-            <div className="container mx-auto px-4 text-center">
-              <p>&copy; 2024 Coffee SaaS. All rights reserved.</p>
-            </div>
-          </footer>
-        </body>
-      </html>
-    </ClerkProvider>
+    <html
+      lang="en"
+      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
   );
 }
