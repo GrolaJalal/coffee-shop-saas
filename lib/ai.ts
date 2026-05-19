@@ -1,9 +1,9 @@
-import OpenAI from "openai";
+import Groq from "groq-sdk";
 
-// Initialize OpenAI client
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+// Initialize Groq client
+const groq = process.env.GROQ_API_KEY
+  ? new Groq({
+      apiKey: process.env.GROQ_API_KEY,
     })
   : null;
 
@@ -22,27 +22,27 @@ export interface NearbySearchParams {
 }
 
 /**
- * Generate AI-powered coffee shop recommendations based on user preferences
+ * Generate AI-powered coffee shop recommendations using Groq Llama 3
  */
 export async function generateRecommendations(
   preferences: RecommendationPreferences,
   shops: any[]
 ): Promise<any[]> {
-  // If OpenAI is not configured, fall back to simple matching
-  if (!openai) {
+  // If Groq is not configured, fall back to simple matching
+  if (!groq) {
     return fallbackRecommendations(preferences, shops);
   }
 
   try {
     const prompt = buildRecommendationPrompt(preferences, shops);
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+    const completion = await groq.chat.completions.create({
+      model: "llama3-8b-8192",
       messages: [
         {
           role: "system",
           content:
-            "You are a coffee expert helping users find the perfect coffee shop based on their preferences. Analyze the available shops and recommend the best matches.",
+            "You are a coffee expert helping users find the perfect coffee shop based on their preferences. Analyze the available shops and recommend the best matches. Return your response as a JSON array with shop IDs and match reasons.",
         },
         {
           role: "user",
@@ -50,13 +50,15 @@ export async function generateRecommendations(
         },
       ],
       temperature: 0.7,
-      max_tokens: 500,
+      max_tokens: 1024,
+      top_p: 1,
+      stream: false,
     });
 
     const response = completion.choices[0].message.content;
     return parseRecommendations(response, shops);
   } catch (error) {
-    console.error("AI recommendation error:", error);
+    console.error("Groq AI recommendation error:", error);
     return fallbackRecommendations(preferences, shops);
   }
 }
@@ -83,8 +85,8 @@ export async function findNearbyShops(
     .sort((a, b) => a.distance - b.distance)
     .slice(0, params.limit || 10);
 
-  // If OpenAI is available, enhance with AI insights
-  if (openai && nearbyShops.length > 0) {
+  // If Groq is available, enhance with AI insights
+  if (groq && nearbyShops.length > 0) {
     try {
       const enhancedShops = await enhanceShopDescriptions(nearbyShops);
       return enhancedShops;
@@ -97,10 +99,10 @@ export async function findNearbyShops(
 }
 
 /**
- * Enhance shop descriptions with AI-generated insights
+ * Enhance shop descriptions with AI-generated insights using Groq
  */
 async function enhanceShopDescriptions(shops: any[]): Promise<any[]> {
-  if (!openai) return shops;
+  if (!groq) return shops;
 
   try {
     const enhancedShops = await Promise.all(
@@ -115,8 +117,8 @@ async function enhanceShopDescriptions(shops: any[]): Promise<any[]> {
           Generate a 1-2 sentence description that highlights what makes this shop special.
         `;
 
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4",
+        const completion = await groq.chat.completions.create({
+          model: "llama3-8b-8192",
           messages: [
             {
               role: "system",
@@ -129,7 +131,9 @@ async function enhanceShopDescriptions(shops: any[]): Promise<any[]> {
             },
           ],
           temperature: 0.8,
-          max_tokens: 100,
+          max_tokens: 200,
+          top_p: 1,
+          stream: false,
         });
 
         const enhancedDescription = completion.choices[0].message.content;
@@ -180,6 +184,7 @@ function buildRecommendationPrompt(
     Please recommend the top 3 coffee shops that best match these preferences.
     For each recommendation, explain why it's a good match.
     Return the response as a JSON array with shop IDs and match reasons.
+    Example format: [{"id": "1", "reason": "Matches your taste preference for strong coffee"}]
   `;
 }
 
@@ -190,21 +195,25 @@ function parseRecommendations(response: string | null, shops: any[]): any[] {
   if (!response) return shops.slice(0, 3);
 
   try {
-    const parsed = JSON.parse(response);
-    if (Array.isArray(parsed)) {
-      return parsed
-        .map((rec) => {
-          const shop = shops.find((s) => s.id === rec.id);
-          if (shop) {
-            return {
-              ...shop,
-              matchReason: rec.reason,
-              aiRecommended: true,
-            };
-          }
-          return null;
-        })
-        .filter(Boolean);
+    // Extract JSON from response (in case there's extra text)
+    const jsonMatch = response.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((rec) => {
+            const shop = shops.find((s) => s.id === rec.id);
+            if (shop) {
+              return {
+                ...shop,
+                matchReason: rec.reason,
+                aiRecommended: true,
+              };
+            }
+            return null;
+          })
+          .filter(Boolean);
+      }
     }
   } catch {
     // If parsing fails, return top-rated shops

@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 
 export default function Navbar() {
   return (
@@ -32,18 +35,22 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
-            <Link
-              href="/login"
-              className="text-gray-700 hover:text-amber-600 font-medium transition"
-            >
-              Log In
-            </Link>
-            <Link
-              href="/signup"
-              className="bg-amber-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-700 transition"
-            >
-              Sign Up
-            </Link>
+            <SignedOut>
+              <Link
+                href="/login"
+                className="text-gray-700 hover:text-amber-600 font-medium transition hidden sm:block"
+              >
+                Log In
+              </Link>
+              <SignUpButton>
+                <button className="bg-amber-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-700 transition">
+                  Sign Up
+                </button>
+              </SignUpButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
           </div>
         </div>
       </div>
